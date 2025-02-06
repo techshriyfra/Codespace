@@ -78,22 +78,24 @@ def start_codespace(update: Update, context: CallbackContext):
     if response.status_code == 202:
         query.edit_message_text(text=f"⏳ Starting Codespace '{codespace_name}'... Please wait ⏳")
 
-        # ✅ Wait and check the status until it's available
-        for _ in range(10):  # Retry for up to 50 seconds (10 loops of 5 sec)
+        # ✅ Wait for the Codespace to be ready (Retry up to 1 minute)
+        for _ in range(12):  # 12 attempts, 5 seconds apart (1 minute max)
             time.sleep(5)
             status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
             
             if status_response.status_code == 200:
                 codespace_info = status_response.json()
-                if codespace_info.get("state") == "Available":
+                state = codespace_info.get("state", "Unknown")
+
+                if state == "Available":
                     query.edit_message_text(
                         text=f"✅ Successfully started the Codespace '{codespace_name}'! 🛠️"
                     )
-                    return
-            else:
-                query.edit_message_text(
-                    text=f"⚠️ Codespace '{codespace_name}' is still starting... Checking again."
-                )
+                    return  # Stop checking once it's available
+                
+            query.edit_message_text(
+                text=f"⏳ Codespace '{codespace_name}' is still starting... Checking again."
+            )
 
         query.edit_message_text(
             text=f"❌ Codespace '{codespace_name}' took too long to start. Try again later."

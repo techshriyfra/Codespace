@@ -1,9 +1,10 @@
+import time
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 # Define your tokens
-TELEGRAM_TOKEN = '7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U'  # Replace with your actual bot token
+TELEGRAM_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'  # Replace with actual bot token
 OWNER_NAME = 'Tech Shreyansh'
 OWNER_URL = 'https://t.me/Tech_Shreyansh29'
 CHANNEL_URL = 'https://t.me/Tech_Shreyansh2'
@@ -35,13 +36,11 @@ def start(update: Update, context: CallbackContext):
 # On command handler to set GitHub token
 def on(update: Update, context: CallbackContext):
     global github_token
-    reply_markup = get_inline_keyboard()
-    
     if context.args:
         github_token = context.args[0]
-        update.message.reply_text("✅ GitHub token set successfully! Use /codespaces to list your Codespaces.", reply_markup=reply_markup)
+        update.message.reply_text("✅ GitHub token set successfully! Use /codespaces to list your Codespaces.")
     else:
-        update.message.reply_text("⚠️ Please provide your GitHub token. Example: /on YOUR_GITHUB_TOKEN", reply_markup=reply_markup)
+        update.message.reply_text("⚠️ Please provide your GitHub token. Example: /on YOUR_GITHUB_TOKEN")
 
 # Codespaces command handler to list Codespaces
 def codespaces(update: Update, context: CallbackContext):
@@ -77,7 +76,29 @@ def start_codespace(update: Update, context: CallbackContext):
     response = requests.post(f'https://api.github.com/user/codespaces/{codespace_name}/start', headers=headers)
 
     if response.status_code == 202:
-        query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_name}'! 🚀\n\n")
+        query.edit_message_text(text=f"⏳ Starting Codespace '{codespace_name}'... Please wait ⏳")
+
+        # ✅ Wait for the Codespace to start
+        time.sleep(5)  # Give it some time before checking its status
+
+        # 🔍 Check the status of the Codespace
+        status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
+        if status_response.status_code == 200:
+            codespace_info = status_response.json()
+            if codespace_info.get("state") == "Available":
+                query.edit_message_text(
+                    text=f"✅ Successfully started Codespace '{codespace_name}'! 🚀\n"
+                         f"💻 Open it here: {codespace_info.get('web_url')}"
+                )
+            else:
+                query.edit_message_text(
+                    text=f"⚠️ Codespace '{codespace_name}' is still starting... Try again later."
+                )
+        else:
+            query.edit_message_text(
+                text=f"❌ Codespace started but unable to fetch status. GitHub API Error: {status_response.status_code}"
+            )
+
     elif response.status_code == 403:
         query.edit_message_text(text="❌ Permission denied. Ensure your GitHub token has `codespace` permissions.")
     elif response.status_code == 404:

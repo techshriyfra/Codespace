@@ -54,11 +54,13 @@ def codespaces(update: Update, context: CallbackContext):
 
     if response.status_code == 200:
         codespaces_data = response.json()
-        update.message.reply_text(f"Debug info: {codespaces_data}")  # Debugging line to print the structure of codespaces_data
+        update.message.reply_text(f"Debug info: Number of Codespaces: {len(codespaces_data)}")  # Debugging line to print the number of codespaces
+        for codespace in codespaces_data:
+            update.message.reply_text(f"Codespace keys: {codespace.keys()}")  # Debugging line to print the keys of each codespace
         if codespaces_data:
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{codespace['display_name']} (ID: {codespace['name']})", callback_data=f"start_{codespace['name']}")]
+                [InlineKeyboardButton(f"{codespace.get('display_name', 'Unnamed')} (ID: {codespace['name']})", callback_data=f"start_{codespace['name']}")]
                 for codespace in codespaces_data
             ]
             reply_markup = InlineKeyboardMarkup(keyboard + [[InlineKeyboardButton("Owner", url=OWNER_URL)], [InlineKeyboardButton("Join Channel", url=CHANNEL_URL)]])

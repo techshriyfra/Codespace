@@ -53,11 +53,12 @@ def codespaces(update: Update, context: CallbackContext):
 
     if response.status_code == 200:
         codespaces_data = response.json()
-        if isinstance(codespaces_data, list):
+        if "codespaces" in codespaces_data:
+            codespaces_list = codespaces_data["codespaces"]
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{codespace['name']} (ID: {codespace['id']})", callback_data=f"start_{codespace['id']}")]
-                for codespace in codespaces_data
+                [InlineKeyboardButton(f"{codespace.get('name')} (ID: {codespace['id']})", callback_data=f"start_{codespace['id']}")]
+                for codespace in codespaces_list
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             update.message.reply_text(message, reply_markup=reply_markup)
@@ -78,8 +79,7 @@ def start_codespace(update: Update, context: CallbackContext):
     if response.status_code == 202:
         query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_id}'! 🛠️\n\n")
     else:
-        query.edit_message_text(text=f"Failed to start Codespace {codespace_id}. Ensure the ID is correct.\n\n"
-                                     f"Error: {response.json()}")  # Add error message for debugging
+        query.edit_message_text(text=f"Failed to start Codespace {codespace_id}. Ensure the ID is correct.\n\n")
 
 # Off command handler to stop a Codespace
 def off(update: Update, context: CallbackContext):

@@ -4,9 +4,9 @@ from telegram.ext import Updater, CommandHandler
 
 # Define your tokens
 TELEGRAM_TOKEN = '7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U'
-OWNER_NAME = 'Tech Shreyansh'
-OWNER_URL = 'https://t.me/Tech_Shreyansh29'  # Replace with your URL
-CHANNEL_URL = 'https://t.me/Tech_Shreyansh2'  # Replace with your channel URL
+OWNER_NAME = 'YOUR_NAME_HERE'
+OWNER_URL = 'https://your-url-here.com'  # Replace with your URL
+CHANNEL_URL = 'https://t.me/YOUR_CHANNEL_NAME'  # Replace with your channel URL
 
 # Global variable to store GitHub token
 github_token = None
@@ -86,7 +86,7 @@ def off(update, context):
 
 # Main function to set up the bot
 def main():
-    updater = Updater(TELEGRAM_TOKEN)
+    updater = Updater(TELEGRAM_TOKEN, use_context=True)
     dp = updater.dispatcher
 
     # Add command handlers

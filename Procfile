@@ -1,1 +1,1 @@
-web: python3 TEMPMAIL.py
+web: python3 codespace_bot.py

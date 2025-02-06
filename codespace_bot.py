@@ -4,7 +4,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 # Define your tokens
-TELEGRAM_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'  # Replace with actual bot token
+TELEGRAM_TOKEN = '7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U'  # Replace with actual bot token
 OWNER_NAME = 'Tech Shreyansh'
 OWNER_URL = 'https://t.me/Tech_Shreyansh29'
 CHANNEL_URL = 'https://t.me/Tech_Shreyansh2'

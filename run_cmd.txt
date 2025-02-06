@@ -1,1 +1,1 @@
-gunicorn app:app & python3 TEMPMAIL.py
+gunicorn app:app & python3 codespace_bot.py

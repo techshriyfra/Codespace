@@ -1,5 +1,5 @@
-python-telegram-bot
-requests
+python-telegram-bot==13.5
+requests==2.25.1
 Flask
 gunicorn
 aiohttp

@@ -86,7 +86,7 @@ def off(update, context):
 
 # Main function to set up the bot
 def main():
-    updater = Updater(TELEGRAM_TOKEN, use_context=True)
+    updater = Updater(TELEGRAM_TOKEN)
     dp = updater.dispatcher
 
     # Add command handlers

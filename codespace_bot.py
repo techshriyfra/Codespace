@@ -76,6 +76,8 @@ def start_codespace(update: Update, context: CallbackContext):
     query.answer()
 
     codespace_id = query.data.split("_")[1]
+    print(f"Attempting to start Codespace with ID: {codespace_id}")  # Print the Codespace ID
+    
     headers = {'Authorization': f'token {github_token}'}
     
     # Check if the Codespace is already running
@@ -106,6 +108,8 @@ def start_codespace(update: Update, context: CallbackContext):
                 )
         else:
             query.edit_message_text(f"❌ Failed to retrieve Codespace status. GitHub API Error: {status_response.status_code}")
+    elif response.status_code == 404:
+        query.edit_message_text(f"❌ Codespace with ID '{codespace_id}' was not found. Please verify the Codespace ID.")
     else:
         query.edit_message_text(f"❌ Failed to start Codespace. GitHub API Error: {response.status_code}")
 

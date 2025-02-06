@@ -1,16 +1,17 @@
-import time
 import requests
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 # Define your tokens
-TELEGRAM_TOKEN = '7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U'  # Replace with actual bot token
-OWNER_NAME = 'Tech Shreyansh'
-OWNER_URL = 'https://t.me/Tech_Shreyansh29'
-CHANNEL_URL = 'https://t.me/Tech_Shreyansh2'
+TELEGRAM_TOKEN = '7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U'  # Replace with your bot token
+OWNER_NAME = 'Your Name'
+OWNER_URL = 'https://t.me/YourUsername'
+CHANNEL_URL = 'https://t.me/YourChannel'
 
-# Global variable to store GitHub token
+# GitHub token and Codespace management
 github_token = None
+codespaces_list = []
+current_codespace = None
 
 # Function to get the inline keyboard
 def get_inline_keyboard():
@@ -25,22 +26,23 @@ def start(update: Update, context: CallbackContext):
     reply_markup = get_inline_keyboard()
     update.message.reply_text(
         "👾 Welcome to the GitHub Codespace Manager Bot! 👾\n\n"
-        "Use the commands:\n"
-        "1️⃣ /on <GitHub_Token> - Set your GitHub token\n"
-        "2️⃣ /codespaces - List available Codespaces\n"
-        "3️⃣ Select a Codespace to start 🚀\n"
-        "4️⃣ /off <Codespace_Name> - Stop a Codespace 🛑",
+        "Here’s the deal:\n"
+        "1️⃣ Use the /on command followed by your GitHub token to take control of your Codespaces. 🔑\n"
+        "2️⃣ Pick a Codespace from the list, and we’ll fire it up for you. ⚙️\n"
+        "3️⃣ Already running? We’ll let you know so you’re not left wondering. 🔍\n\n"
+        "Let’s get this show on the road! 🚀",
         reply_markup=reply_markup
     )
 
 # On command handler to set GitHub token
 def on(update: Update, context: CallbackContext):
     global github_token
+    reply_markup = get_inline_keyboard()
     if context.args:
         github_token = context.args[0]
-        update.message.reply_text("✅ GitHub token set successfully! Use /codespaces to list your Codespaces.")
+        update.message.reply_text("🔍 GitHub token set successfully! Use /codespaces to list your Codespaces.", reply_markup=reply_markup)
     else:
-        update.message.reply_text("⚠️ Please provide your GitHub token. Example: /on YOUR_GITHUB_TOKEN")
+        update.message.reply_text("⚠️ You need to provide a GitHub token. Use /on <token> to authorize. 🔑", reply_markup=reply_markup)
 
 # Codespaces command handler to list Codespaces
 def codespaces(update: Update, context: CallbackContext):
@@ -48,20 +50,23 @@ def codespaces(update: Update, context: CallbackContext):
         update.message.reply_text("⚠️ You need to provide a GitHub token. Use /on <token> to authorize. 🔑")
         return
 
-    headers = {'Authorization': f'Bearer {github_token}'}
+    headers = {'Authorization': f'token {github_token}'}
     response = requests.get('https://api.github.com/user/codespaces', headers=headers)
 
     if response.status_code == 200:
         codespaces_data = response.json()
         if "codespaces" in codespaces_data and codespaces_data["codespaces"]:
+            global codespaces_list
+            codespaces_list = codespaces_data["codespaces"]
+            message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{cs.get('name')}", callback_data=f"start_{cs.get('name')}")]
-                for cs in codespaces_data["codespaces"]
+                [InlineKeyboardButton(f"{cs.get('name')} (ID: {cs['id']})", callback_data=f"start_{cs['id']}")]
+                for cs in codespaces_list
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            update.message.reply_text("🔍 Select a Codespace to start:", reply_markup=reply_markup)
+            update.message.reply_text(message, reply_markup=reply_markup)
         else:
-            update.message.reply_text("⚠️ You have no Codespaces available.")
+            update.message.reply_text('⚠️ You have no Codespaces available.')
     else:
         update.message.reply_text(f"❌ Failed to retrieve Codespaces. GitHub API Error: {response.status_code}")
 
@@ -69,44 +74,40 @@ def codespaces(update: Update, context: CallbackContext):
 def start_codespace(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
+
+    codespace_id = query.data.split("_")[1]
+    headers = {'Authorization': f'token {github_token}'}
     
-    codespace_name = query.data.split("_", 1)[1]
-    headers = {'Authorization': f'Bearer {github_token}'}
+    # Check if the Codespace is already running
+    global current_codespace
+    if current_codespace and current_codespace['id'] == codespace_id:
+        query.edit_message_text(f"✅ Codespace '{current_codespace['name']}' is already running! 🚀")
+        return
     
-    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_name}/start', headers=headers)
+    # Start the Codespace
+    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_id}/start', headers=headers)
 
     if response.status_code == 202:
-        query.edit_message_text(text=f"⏳ Starting Codespace '{codespace_name}'... Please wait ⏳")
-
-        # ✅ Wait for the Codespace to be ready (Retry up to 1 minute)
-        for _ in range(12):  # 12 attempts, 5 seconds apart (1 minute max)
-            time.sleep(5)
-            status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
-            
-            if status_response.status_code == 200:
-                codespace_info = status_response.json()
-                state = codespace_info.get("state", "Unknown")
-
-                if state == "Available":
-                    query.edit_message_text(
-                        text=f"✅ Successfully started the Codespace '{codespace_name}'! 🛠️"
-                    )
-                    return  # Stop checking once it's available
-                
-            query.edit_message_text(
-                text=f"⏳ Codespace '{codespace_name}' is still starting... Checking again."
-            )
-
-        query.edit_message_text(
-            text=f"❌ Codespace '{codespace_name}' took too long to start. Try again later."
-        )
-
-    elif response.status_code == 403:
-        query.edit_message_text(text="❌ Permission denied. Ensure your GitHub token has `codespace` permissions.")
-    elif response.status_code == 404:
-        query.edit_message_text(text=f"❌ Codespace '{codespace_name}' not found. Check if it's available.")
+        query.edit_message_text(f"⏳ Please wait, we are firing your Codespace... ⏳")
+        
+        # Check the status of the Codespace
+        status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_id}', headers=headers)
+        
+        if status_response.status_code == 200:
+            codespace_info = status_response.json()
+            if codespace_info.get("state") == "Available":
+                current_codespace = codespace_info
+                query.edit_message_text(
+                    text=f"✅ Successfully started the Codespace '{codespace_info['name']}'! 🛠️"
+                )
+            else:
+                query.edit_message_text(
+                    text=f"⚠️ Codespace '{codespace_info['name']}' is still starting... Try again later."
+                )
+        else:
+            query.edit_message_text(f"❌ Failed to retrieve Codespace status. GitHub API Error: {status_response.status_code}")
     else:
-        query.edit_message_text(text=f"❌ Failed to start Codespace {codespace_name}. GitHub API Error: {response.status_code}")
+        query.edit_message_text(f"❌ Failed to start Codespace. GitHub API Error: {response.status_code}")
 
 # Off command handler to stop a Codespace
 def off(update: Update, context: CallbackContext):
@@ -119,11 +120,11 @@ def off(update: Update, context: CallbackContext):
         return
 
     codespace_name = context.args[0]
-    headers = {'Authorization': f'Bearer {github_token}'}
+    headers = {'Authorization': f'token {github_token}'}
     response = requests.delete(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
 
     if response.status_code == 204:
-        update.message.reply_text(f"✅ Successfully stopped the Codespace '{codespace_name}'! 🛑")
+        update.message.reply_text(f"✅ Codespace '{codespace_name}' stopped successfully.")
     elif response.status_code == 404:
         update.message.reply_text(f"❌ Codespace '{codespace_name}' not found. Ensure the name is correct.")
     else:

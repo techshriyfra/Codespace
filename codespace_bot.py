@@ -57,7 +57,7 @@ def codespaces(update: Update, context: CallbackContext):
             codespaces_list = codespaces_data["codespaces"]
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{codespace.get('name')}", callback_data=f"start_{codespace['id']}")]
+                [InlineKeyboardButton(f"{codespace.get('name')}", callback_data=f"start_{codespace['name']}")]
                 for codespace in codespaces_list
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -72,14 +72,14 @@ def start_codespace(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
     
-    codespace_id = query.data.split("_")[1]
+    codespace_name = query.data.split("_")[1]
     headers = {'Authorization': f'token {github_token}'}
-    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_id}/start', headers=headers)
+    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_name}/start', headers=headers)
     
     if response.status_code == 202:
-        query.edit_message_text(text=f"✅ Successfully started the Codespace with the name you selected! 🛠️\n\n")
+        query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_name}'! 🛠️\n\n")
     else:
-        query.edit_message_text(text=f"Failed to start the Codespace. Ensure the name is correct.\n\n")
+        query.edit_message_text(text=f"Failed to start the Codespace '{codespace_name}'. Ensure the name is correct.\n\n")
 
 # Off command handler to stop a Codespace
 def off(update: Update, context: CallbackContext):

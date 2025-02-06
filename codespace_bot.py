@@ -78,26 +78,26 @@ def start_codespace(update: Update, context: CallbackContext):
     if response.status_code == 202:
         query.edit_message_text(text=f"⏳ Starting Codespace '{codespace_name}'... Please wait ⏳")
 
-        # ✅ Wait for the Codespace to start
-        time.sleep(5)  # Give it some time before checking its status
-
-        # 🔍 Check the status of the Codespace
-        status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
-        if status_response.status_code == 200:
-            codespace_info = status_response.json()
-            if codespace_info.get("state") == "Available":
-                query.edit_message_text(
-                    text=f"✅ Successfully started Codespace '{codespace_name}'! 🚀\n"
-                         f"💻 Open it here: {codespace_info.get('web_url')}"
-                )
+        # ✅ Wait and check the status until it's available
+        for _ in range(10):  # Retry for up to 50 seconds (10 loops of 5 sec)
+            time.sleep(5)
+            status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
+            
+            if status_response.status_code == 200:
+                codespace_info = status_response.json()
+                if codespace_info.get("state") == "Available":
+                    query.edit_message_text(
+                        text=f"✅ Successfully started the Codespace '{codespace_name}'! 🛠️"
+                    )
+                    return
             else:
                 query.edit_message_text(
-                    text=f"⚠️ Codespace '{codespace_name}' is still starting... Try again later."
+                    text=f"⚠️ Codespace '{codespace_name}' is still starting... Checking again."
                 )
-        else:
-            query.edit_message_text(
-                text=f"❌ Codespace started but unable to fetch status. GitHub API Error: {status_response.status_code}"
-            )
+
+        query.edit_message_text(
+            text=f"❌ Codespace '{codespace_name}' took too long to start. Try again later."
+        )
 
     elif response.status_code == 403:
         query.edit_message_text(text="❌ Permission denied. Ensure your GitHub token has `codespace` permissions.")
@@ -121,7 +121,7 @@ def off(update: Update, context: CallbackContext):
     response = requests.delete(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
 
     if response.status_code == 204:
-        update.message.reply_text(f"✅ Codespace '{codespace_name}' stopped successfully.")
+        update.message.reply_text(f"✅ Successfully stopped the Codespace '{codespace_name}'! 🛑")
     elif response.status_code == 404:
         update.message.reply_text(f"❌ Codespace '{codespace_name}' not found. Ensure the name is correct.")
     else:

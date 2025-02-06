@@ -53,12 +53,12 @@ def codespaces(update: Update, context: CallbackContext):
 
     if response.status_code == 200:
         codespaces_data = response.json()
-        if "codespaces" in codespaces_data:
-            codespaces_list = codespaces_data["codespaces"]
+        update.message.reply_text(f"Debug info: {codespaces_data}")  # Debugging line to print the response
+        if isinstance(codespaces_data, list):
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{codespace.get('name')} (ID: {codespace['id']})", callback_data=f"start_{codespace['id']}")]
-                for codespace in codespaces_list
+                [InlineKeyboardButton(f"{codespace['name']} (ID: {codespace['id']})", callback_data=f"start_{codespace['id']}")]
+                for codespace in codespaces_data
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             update.message.reply_text(message, reply_markup=reply_markup)
@@ -75,11 +75,14 @@ def start_codespace(update: Update, context: CallbackContext):
     codespace_id = query.data.split("_")[1]
     headers = {'Authorization': f'token {github_token}'}
     response = requests.post(f'https://api.github.com/user/codespaces/{codespace_id}/start', headers=headers)
-    
+
+    # Debugging information
+    update.message.reply_text(f"Debug info: Endpoint - https://api.github.com/user/codespaces/{codespace_id}/start\nResponse status: {response.status_code}\nResponse: {response.json()}")
+
     if response.status_code == 202:
-        query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_id}'! 🛠️\n\n")
+        query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_id}'! 🛠️")
     else:
-        query.edit_message_text(text=f"Failed to start Codespace {codespace_id}. Ensure the ID is correct.\n\n")
+        query.edit_message_text(text=f"Failed to start Codespace {codespace_id}. Ensure the ID is correct.\n\nError: {response.json()}")
 
 # Off command handler to stop a Codespace
 def off(update: Update, context: CallbackContext):

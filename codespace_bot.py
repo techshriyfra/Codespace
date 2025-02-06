@@ -60,7 +60,7 @@ def codespaces(update: Update, context: CallbackContext):
             codespaces_list = codespaces_data["codespaces"]
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{cs.get('name')} (ID: {cs['id']})", callback_data=f"start_{cs['id']}")]
+                [InlineKeyboardButton(f"{cs.get('name')}", callback_data=f"start_{cs['name']}")]
                 for cs in codespaces_list
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -70,30 +70,30 @@ def codespaces(update: Update, context: CallbackContext):
     else:
         update.message.reply_text(f"❌ Failed to retrieve Codespaces. GitHub API Error: {response.status_code}")
 
-# Callback query handler to start a selected Codespace
+# Callback query handler to start a selected Codespace by name
 def start_codespace(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
 
-    codespace_id = query.data.split("_")[1]
-    print(f"Attempting to start Codespace with ID: {codespace_id}")  # Print the Codespace ID
+    codespace_name = query.data.split("_")[1]
+    print(f"Attempting to start Codespace with name: {codespace_name}")  # Print the Codespace name
     
     headers = {'Authorization': f'token {github_token}'}
     
     # Check if the Codespace is already running
     global current_codespace
-    if current_codespace and current_codespace['id'] == codespace_id:
+    if current_codespace and current_codespace['name'] == codespace_name:
         query.edit_message_text(f"✅ Codespace '{current_codespace['name']}' is already running! 🚀")
         return
     
-    # Start the Codespace
-    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_id}/start', headers=headers)
+    # Start the Codespace by name
+    response = requests.post(f'https://api.github.com/user/codespaces/{codespace_name}/start', headers=headers)
 
     if response.status_code == 202:
         query.edit_message_text(f"⏳ Please wait, we are firing your Codespace... ⏳")
         
         # Check the status of the Codespace
-        status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_id}', headers=headers)
+        status_response = requests.get(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
         
         if status_response.status_code == 200:
             codespace_info = status_response.json()
@@ -109,7 +109,7 @@ def start_codespace(update: Update, context: CallbackContext):
         else:
             query.edit_message_text(f"❌ Failed to retrieve Codespace status. GitHub API Error: {status_response.status_code}")
     elif response.status_code == 404:
-        query.edit_message_text(f"❌ Codespace with ID '{codespace_id}' was not found. Please verify the Codespace ID.")
+        query.edit_message_text(f"❌ Codespace with name '{codespace_name}' was not found. Please verify the Codespace name.")
     else:
         query.edit_message_text(f"❌ Failed to start Codespace. GitHub API Error: {response.status_code}")
 

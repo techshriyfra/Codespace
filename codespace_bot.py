@@ -53,12 +53,12 @@ def codespaces(update: Update, context: CallbackContext):
 
     if response.status_code == 200:
         codespaces_data = response.json()
-        update.message.reply_text(f"Debug info: {codespaces_data}")  # Debugging line to print the response
-        if isinstance(codespaces_data, list):
+        if "codespaces" in codespaces_data:
+            codespaces_list = codespaces_data["codespaces"]
             message = '🔍 Select a Codespace to start from the list below:'
             keyboard = [
-                [InlineKeyboardButton(f"{codespace['name']} (ID: {codespace['id']})", callback_data=f"start_{codespace['id']}")]
-                for codespace in codespaces_data
+                [InlineKeyboardButton(f"{codespace.get('name')}", callback_data=f"start_{codespace['id']}")]
+                for codespace in codespaces_list
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             update.message.reply_text(message, reply_markup=reply_markup)
@@ -75,14 +75,11 @@ def start_codespace(update: Update, context: CallbackContext):
     codespace_id = query.data.split("_")[1]
     headers = {'Authorization': f'token {github_token}'}
     response = requests.post(f'https://api.github.com/user/codespaces/{codespace_id}/start', headers=headers)
-
-    # Debugging information
-    update.message.reply_text(f"Debug info: Endpoint - https://api.github.com/user/codespaces/{codespace_id}/start\nResponse status: {response.status_code}\nResponse: {response.json()}")
-
+    
     if response.status_code == 202:
-        query.edit_message_text(text=f"✅ Successfully started the Codespace '{codespace_id}'! 🛠️")
+        query.edit_message_text(text=f"✅ Successfully started the Codespace with the name you selected! 🛠️\n\n")
     else:
-        query.edit_message_text(text=f"Failed to start Codespace {codespace_id}. Ensure the ID is correct.\n\nError: {response.json()}")
+        query.edit_message_text(text=f"Failed to start the Codespace. Ensure the name is correct.\n\n")
 
 # Off command handler to stop a Codespace
 def off(update: Update, context: CallbackContext):
@@ -92,17 +89,17 @@ def off(update: Update, context: CallbackContext):
         return
 
     if not context.args:
-        update.message.reply_text("Please provide the ID of the Codespace to stop. Example: /off CODESPACE_ID", reply_markup=reply_markup)
+        update.message.reply_text("Please provide the name of the Codespace to stop. Example: /off CODESPACE_NAME", reply_markup=reply_markup)
         return
 
-    codespace_id = context.args[0]
+    codespace_name = context.args[0]
     headers = {'Authorization': f'token {github_token}'}
-    response = requests.delete(f'https://api.github.com/user/codespaces/{codespace_id}', headers=headers)
+    response = requests.delete(f'https://api.github.com/user/codespaces/{codespace_name}', headers=headers)
 
     if response.status_code == 204:
-        update.message.reply_text(f"Codespace {codespace_id} stopped successfully.", reply_markup=reply_markup)
+        update.message.reply_text(f"Codespace '{codespace_name}' stopped successfully.", reply_markup=reply_markup)
     else:
-        update.message.reply_text(f"Failed to stop Codespace {codespace_id}. Ensure the ID is correct.", reply_markup=reply_markup)
+        update.message.reply_text(f"Failed to stop Codespace '{codespace_name}'. Ensure the name is correct.", reply_markup=reply_markup)
 
 # Main function to set up the bot
 def main():

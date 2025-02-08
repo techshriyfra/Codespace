@@ -1,13 +1,35 @@
 import telebot
 import requests
 import json
-import os
+import time
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TELEGRAM_BOT_TOKEN = "7507479675:AAGnbw9YuMi6q9V0DUuWsK6DYuEKKJwju0U"
 bot = telebot.TeleBot(TELEGRAM_BOT_TOKEN)
 
 user_tokens = {}  # Store user tokens in memory
+
+# Function to make requests with retries
+def make_request(url, headers, method='GET', data=None, retries=3, delay=2):
+    for attempt in range(retries):
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers, timeout=10)
+            else:
+                response = requests.post(url, headers=headers, json=data, timeout=10)
+            
+            if response.status_code == 403:
+                return None, "⚠️ GitHub API rate limit exceeded. Try again later."
+            
+            if response.status_code in [200, 201]:
+                return response, None
+            
+        except requests.exceptions.RequestException as e:
+            if attempt == retries - 1:
+                return None, f"❌ Network error: {str(e)}. Please try again later."
+        
+        time.sleep(delay)
+    return None, "❌ Failed after multiple attempts. Please try again later."
 
 # Start command
 @bot.message_handler(commands=['start'])
@@ -29,18 +51,17 @@ def on_command(message):
     
     token = parts[1]
     user_tokens[message.chat.id] = token
-    
     bot.send_message(message.chat.id, "🔍 Fetching your Codespaces...")
     list_codespaces(message.chat.id, token)
 
 # List Codespaces
 def list_codespaces(chat_id, token):
     url = "https://api.github.com/user/codespaces"
-    headers = {"Authorization": f"token {token}"}
-    response = requests.get(url, headers=headers)
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    response, error = make_request(url, headers)
     
-    if response.status_code != 200:
-        bot.send_message(chat_id, "😕 No Codespaces found. Please ensure your token is correct and try again. 📜")
+    if error:
+        bot.send_message(chat_id, error)
         return
     
     codespaces = response.json().get("codespaces", [])
@@ -66,8 +87,12 @@ def start_codespace(call):
     bot.send_message(chat_id, f"🔄 Please wait, we're firing up your Codespace `{codespace_name}`")
     
     url = f"https://api.github.com/user/codespaces/{codespace_name}/start"
-    headers = {"Authorization": f"token {token}"}
-    response = requests.post(url, headers=headers)
+    headers = {"Authorization": f"token {token}", "Accept": "application/vnd.github.v3+json"}
+    response, error = make_request(url, headers, method='POST')
+    
+    if error:
+        bot.send_message(chat_id, error)
+        return
     
     if response.status_code == 201:
         bot.send_message(chat_id, f"✅ Successfully started the Codespace '{codespace_name}'! 🛠️")
